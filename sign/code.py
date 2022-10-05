@@ -205,46 +205,47 @@ def connect_ap():
     print("My IP address is", esp.pretty_ip(esp.ip_address))
 
 def get_status():
-    
-    print('Getting status...')
-    r = requests.get(STATUS_URL)
+
     print("-" * 40)
-    print('code: ', r.status_code)
+    print(f'Fetching status from {STATUS_URL}')
+    r = requests.get(STATUS_URL)
     assert r.status_code == 200, f'Request status code: {r.status_code}'
+    # Debugging
+    print('code: ', r.status_code)
     print(r)
-    print(r.text)
+
+    print('Current status: ', r.text)
     print("-" * 40)
     r.close()
 
     return r.text.strip()
 
-def check_time():
-    print("Fetching json from", TIME_URL)
-    r = requests.get(TIME_URL)
-    print('code: ', r.status_code)
-    assert r.status_code == 200, f'Request status code: {r.status_code}'
+def check_is_nighttime():
+
     print("-" * 40)
-    print(r.json())
-    response = r.json()
-    datetime = response["datetime"]
-    hour = int(datetime[11:13])
-    if hour in range(8, 18):
-        NIGHT_MODE = False
-    else:
-        NIGHT_MODE = True
-    print(f'Hour is {hour}, NIGHT_MODE set to {NIGHT_MODE}')
+    print(f'Fetching json from {TIME_URL}')
+    r = requests.get(TIME_URL)
+    assert r.status_code == 200, f'Request status code: {r.status_code}'
+    hour = int(r.json()["datetime"][11:13])
+    # debugging
+    print(f'Current hour is: {hour}')
     print("-" * 40)
     r.close()
 
+    if hour in range(8, 18):
+        return False
+    else:
+        return True
+
 # debugging
 if not DEBUG:
+    # Connect
     connect_ap()
-    time.sleep(5)
     try:
-        check_time()
+        # Check current time for night mode
+        NIGHT_MODE = check_is_nighttime()
     except:
-        print('time check failed')
-        pass
+        print('Initial time check failed')
 
 check_time_count = CHECK_TIME_CONST
 
@@ -253,7 +254,7 @@ while True:
     # Check time for night mode once per hour
     if check_time_count == 0:
         try:
-            check_time()
+            NIGHT_MODE = check_is_nighttime()
         except:
             print('Could not reach time server, continuing...')
 
@@ -261,7 +262,6 @@ while True:
 
     # Fetch status and update display
     if not DEBUG:
-        print("Fetching status from", STATUS_URL)
         try:
             status = get_status()
             if status == 'ON':
@@ -299,6 +299,7 @@ while True:
         update_text(0)
 
     check_time_count -= 1
+    # debugging
     print('time check', check_time_count)
     time.sleep(TIME_SLEEP)
 
