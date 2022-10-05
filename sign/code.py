@@ -32,7 +32,7 @@ DEBUG = False
 NIGHT_MODE = False
 TIME_SLEEP = 2
 CHECK_TIME_CONST = int(600/TIME_SLEEP) # only check time once ~10 minutes
-WATCHDOG_TIMEOUT = 15 # watchdog timeout in seconds
+WATCHDOG_TIMEOUT = 16 # watchdog timeout in seconds
 
 ############################################################################################################################################################################
 
@@ -286,7 +286,6 @@ while True:
                 connect_ap()
 
             print('Failed request, trying again...')
-            continue
 
         w.feed() # feed watchdog
 

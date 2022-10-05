@@ -30,3 +30,7 @@ To get the server running use something like this:
 ```
 python3 -m flask --debug run --host 0.0.0.0 --port 6006
 ```
+
+### Note on Watchdog
+There are a few issues with the ESP hanging on the current version I'm using (CircuitPython latest stable release `7.3.3` and FW `1.2.2`) so I've added a [watchdog](https://docs.circuitpython.org/en/latest/shared-bindings/watchdog/index.html). The maximum timeout is 16 and it will reset the board once the timeout is exceeded.
+If there's any issues with the watchdog you can enter [safe mode](https://learn.adafruit.com/welcome-to-circuitpython/troubleshooting) and remove it.
