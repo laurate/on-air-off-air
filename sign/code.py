@@ -256,7 +256,7 @@ while True:
             check_time()
         except:
             print('Could not reach time server, continuing...')
-            continue
+
         check_time_count = CHECK_TIME_CONST
 
     # Fetch status and update display
