@@ -7,7 +7,7 @@ A beautiful LED sign with a corresponding website to let people know when you're
 The Hardware side is based on the [Adafruit YouTube On Air Sign](https://learn.adafruit.com/rgb-matrix-automatic-youtube-on-air-sign).
 The parts I'm using are the
 * 64x32 RGB LED Matrix with 4mm pitch
-* Adafruit Matrix Portal
+* Adafruit Matrix Portal M4
 
 Thanks to the Matrix Portal this is very plug&play.
 
