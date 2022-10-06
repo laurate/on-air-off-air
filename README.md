@@ -22,6 +22,7 @@ To monitor the output you can use the `screen` command with your specific tty de
 ```
 screen /dev/tty.usbmodem1101 115200
 ```
+!['Sign On Air / Off Air'](images/on_air_off_air.gif)
 
 ### Server
 This is using flask and a simple bootstrap template to give the user two buttons to press. So they can show if they are `ON AIR` or `OFF AIR`.
@@ -31,6 +32,8 @@ To get the server running use something like this:
 python3 -m flask --debug run --host 0.0.0.0 --port 6006
 ```
 
+![Server Screenshot](images/server_screenshot.png)
+
 ### Note on Watchdog
-There are a few issues with the ESP hanging on the current version I'm using (CircuitPython latest stable release `7.3.3` and FW `1.2.2`) so I've added a [watchdog](https://docs.circuitpython.org/en/latest/shared-bindings/watchdog/index.html). The maximum timeout is 16 and it will reset the board once the timeout is exceeded.
-If there's any issues with the watchdog you can enter [safe mode](https://learn.adafruit.com/welcome-to-circuitpython/troubleshooting) and remove it.
+There are a few issues with the ESP becoming unresponsive on the current version I'm using (CircuitPython latest stable release `7.3.3` and FW `1.2.2`) so I've added a [watchdog](https://docs.circuitpython.org/en/latest/shared-bindings/watchdog/index.html). The maximum timeout is 16 and it will reset the board once the timeout is exceeded.
+If there's any issues accessing `code.py` because of watchdog resets you can enter [safe mode](https://learn.adafruit.com/welcome-to-circuitpython/troubleshooting) and remove it.
