@@ -21,8 +21,6 @@ from adafruit_display_shapes.rect import Rect
 from adafruit_display_shapes.polygon import Polygon
 from adafruit_bitmap_font import bitmap_font
 from adafruit_matrixportal.matrix import Matrix
-from microcontroller import watchdog as w
-from watchdog import WatchDogMode
 
 ############################################################################################################################################################################
 
@@ -32,7 +30,6 @@ DEBUG = False
 NIGHT_MODE = False
 TIME_SLEEP = 2
 CHECK_TIME_CONST = int(600/TIME_SLEEP) # only check time once ~10 minutes
-WATCHDOG_TIMEOUT = 16 # watchdog timeout in seconds
 
 ############################################################################################################################################################################
 
@@ -240,11 +237,6 @@ def check_is_nighttime():
     else:
         return True
 
-# set up watchdog
-w.timeout = WATCHDOG_TIMEOUT
-w.mode = WatchDogMode.RESET
-w.feed()
-
 # debugging
 if not DEBUG:
     # Connect
@@ -259,8 +251,6 @@ check_time_count = CHECK_TIME_CONST
 
 while True:
 
-    w.feed() # feed watchdog
-
     # Check time for night mode once per hour
     if check_time_count == 0:
         try:
@@ -270,24 +260,22 @@ while True:
 
         check_time_count = CHECK_TIME_CONST
 
-    w.feed() # feed watchdog
-
     # Fetch status and update display
     if not DEBUG:
         try:
             status = get_status()
-            if status == 'ON':
+            if status.lower() == 'on':
                 update_text(1)
-            else:
+            elif status.lower() == 'off':
                 update_text(0)
+            else:
+                print(f'ERROR, unknown status {status}')
         except:
             print('ESP connection status: ', esp.is_connected)
             if not esp.is_connected:
                 connect_ap()
 
             print('Failed request, trying again...')
-
-        w.feed() # feed watchdog
 
     # debugging
     else:
