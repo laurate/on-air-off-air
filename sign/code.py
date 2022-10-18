@@ -16,31 +16,33 @@ import adafruit_requests as requests
 import adafruit_esp32spi.adafruit_esp32spi_socket as socket
 
 from adafruit_esp32spi import adafruit_esp32spi
-from digitalio import DigitalInOut
+from digitalio import DigitalInOut, Pull
 from adafruit_display_shapes.rect import Rect
 from adafruit_display_shapes.polygon import Polygon
 from adafruit_bitmap_font import bitmap_font
 from adafruit_matrixportal.matrix import Matrix
+from adafruit_debouncer import Debouncer
 
 ############################################################################################################################################################################
 
-STATUS_URL = "http://192.168.178.23:6006/get_status"
-TIME_URL = "http://worldtimeapi.org/api/timezone/Europe/Berlin"
-DEBUG = False
+STATUS_URL = 'http://192.168.178.23:6006/get_status'
+TIME_URL = 'http://worldtimeapi.org/api/timezone/Europe/Berlin'
 NIGHT_MODE = False
 TIME_SLEEP = 2
 CHECK_TIME_CONST = int(600/TIME_SLEEP) # only check time once ~10 minutes
+OFFLINE_MODE = False
 
 ############################################################################################################################################################################
+
+# --- Network setup ---
 
 # Get wifi details and more from a secrets.py file
 try:
     from secrets import secrets
 except ImportError:
-    print("WiFi secrets are kept in secrets.py, please add them there!")
+    print('WiFi secrets are kept in secrets.py, please add them there!')
     raise
 
-# --- Network setup ---
 esp32_cs = DigitalInOut(board.ESP_CS)
 esp32_ready = DigitalInOut(board.ESP_BUSY)
 esp32_reset = DigitalInOut(board.ESP_RESET)
@@ -54,10 +56,16 @@ requests.set_socket(socket, esp)
 matrix = Matrix()
 display = matrix.display
 
+# --- Button setup ---
+pin_down = DigitalInOut(board.BUTTON_DOWN)
+pin_down.switch_to_input(pull=Pull.UP)
+button_down = Debouncer(pin_down)
+pin_up = DigitalInOut(board.BUTTON_UP)
+pin_up.switch_to_input(pull=Pull.UP)
+button_up = Debouncer(pin_up)
+
 # --- Drawing setup ---
-# Create a Group
 group = displayio.Group()
-# Create a bitmap object
 bitmap = displayio.Bitmap(64, 32, 2)  # width, height, bit depth
 
 # Create a color palette
@@ -86,7 +94,6 @@ color[COLOR_DARK_GOLD] = 0xB8860B
 
 # Create a TileGrid using the Bitmap and Palette
 tile_grid = displayio.TileGrid(bitmap, pixel_shader=color)
-# Add the TileGrid to the Group
 group.append(tile_grid)
 
 # draw the frame for startup
@@ -125,13 +132,12 @@ wing_polys.append(Polygon([(54, 9), (56, 9), (55, 10), (54, 10)], outline=color[
 for wing_poly in wing_polys:
     group.append(wing_poly)
 
-
 def redraw_wings(index):  # to change colors
     for wing in wing_polys:
         wing.outline = color[index]
 
 # --- Content Setup ---
-deco_font = bitmap_font.load_font("/BellotaText-Bold-21.bdf")
+deco_font = bitmap_font.load_font('/BellotaText-Bold-21.bdf')
 
 # text positions
 on_x = 15
@@ -141,11 +147,11 @@ off_y = 9
 air_x = 15
 air_y = 25
 
-text_line1 = adafruit_display_text.label.Label(deco_font, color=color[COLOR_WHITE], text="OFF")
+text_line1 = adafruit_display_text.label.Label(deco_font, color = color[COLOR_WHITE], text = 'OFF')
 text_line1.x = off_x
 text_line1.y = off_y
 
-text_line2 = adafruit_display_text.label.Label(deco_font, color=color[COLOR_WHITE], text="AIR")
+text_line2 = adafruit_display_text.label.Label(deco_font, colo = color[COLOR_WHITE], text = 'AIR')
 text_line2.x = air_x
 text_line2.y = air_y
 
@@ -153,9 +159,13 @@ text_line2.y = air_y
 group.append(text_line1)
 group.append(text_line2)
 
-def update_text(state):
-
-    if state:
+def update_text(is_on_air: bool):
+    '''
+    Update text according to state and night mode
+    True = On Air
+    False = Off Air
+    '''
+    if is_on_air:
         if NIGHT_MODE:
             color_text = COLOR_DARK_RED
             color_frame = COLOR_DARK_GOLD
@@ -163,10 +173,10 @@ def update_text(state):
             color_text = COLOR_RED
             color_frame = COLOR_GOLD
 
-        text_line1.text = "ON"
+        text_line1.text = 'ON'
         text_line1.x = on_x
         text_line1.color = color[color_text]
-        text_line2.text = "AIR"
+        text_line2.text = 'AIR'
         text_line2.x = air_x
         text_line2.color = color[color_text]
         redraw_wings(color_frame)
@@ -181,10 +191,10 @@ def update_text(state):
             color_text = COLOR_GREEN
             color_frame = COLOR_BLUE
 
-        text_line1.text = "OFF"
+        text_line1.text = 'OFF'
         text_line1.x = off_x
         text_line1.color = color[color_text]
-        text_line2.text = "AIR"
+        text_line2.text = 'AIR'
         text_line2.x = air_x
         text_line2.color = color[color_text]
         redraw_wings(color_frame)
@@ -192,44 +202,44 @@ def update_text(state):
         display.show(group)
 
 def connect_ap():
-
-    print("Connecting to AP...")
+    '''
+    Connect access point as defined in secrets file
+    '''
     print('ESP connection status: ', esp.is_connected)
     while not esp.is_connected:
         try:
-            esp.connect_AP(secrets["ssid"], secrets["password"])
+            esp.connect_AP(secrets['ssid'], secrets['password'])
         except OSError as e:
-            print("could not connect to AP, retrying: ", e)
+            print('Could not connect to AP, retrying: ', e)
             continue
-    print("Connected to", str(esp.ssid, "utf-8"), "\tRSSI:", esp.rssi)
-    print("My IP address is", esp.pretty_ip(esp.ip_address))
+    print('Connected to', str(esp.ssid, 'utf-8'), '\tRSSI:', esp.rssi)
+    print('My IP address is', esp.pretty_ip(esp.ip_address))
 
 def get_status():
-
-    print("-" * 40)
+    '''
+    Get on air / off air status from STATUS_URL
+    '''
+    print('-' * 40)
     print(f'Fetching status from {STATUS_URL}')
     r = requests.get(STATUS_URL)
     assert r.status_code == 200, f'Request status code: {r.status_code}'
-    # Debugging
-    print('code: ', r.status_code)
-    print(r)
-
     print('Current status: ', r.text)
-    print("-" * 40)
+    print('-' * 40)
     r.close()
 
     return r.text.strip()
 
 def check_is_nighttime():
-
-    print("-" * 40)
+    '''
+    Fetch current time and set night time variable, daytime is set to 8:00 - 18:00
+    '''
+    print('-' * 40)
     print(f'Fetching json from {TIME_URL}')
     r = requests.get(TIME_URL)
     assert r.status_code == 200, f'Request status code: {r.status_code}'
-    hour = int(r.json()["datetime"][11:13])
-    # debugging
-    print(f'Current hour is: {hour}')
-    print("-" * 40)
+    hour = int(r.json()['datetime'][11:13])
+    print('Current hour: ', hour)
+    print('-' * 40)
     r.close()
 
     if hour in range(8, 18):
@@ -237,71 +247,57 @@ def check_is_nighttime():
     else:
         return True
 
-# debugging
-if not DEBUG:
-    # Connect
-    connect_ap()
-    try:
-        # Check current time for night mode
-        NIGHT_MODE = check_is_nighttime()
-    except:
-        print('Initial time check failed')
+# Initialize display text
+update_text(False)
+
+# Connect
+connect_ap()
+
+# Check current time for night mode
+try:
+    NIGHT_MODE = check_is_nighttime()
+except:
+    print('Initial time check failed, moving on.')
 
 check_time_count = CHECK_TIME_CONST
 
 while True:
 
-    # Check time for night mode once per hour
-    if check_time_count == 0:
+    # Check buttons
+    button_down.update()
+    button_up.update()
+    if button_up.fell:
+        print('Button up: ON AIR')
+        update_text(True)
+    elif button_down.fell:
+        print('Button down: OFF AIR')
+        update_text(False)
+
+    # Check time for night mode once per interval
+    if check_time_count <= 0:
         try:
             NIGHT_MODE = check_is_nighttime()
         except:
             print('Could not reach time server, continuing...')
-
-        check_time_count = CHECK_TIME_CONST
+            check_time_count = CHECK_TIME_CONST
 
     # Fetch status and update display
-    if not DEBUG:
+    if not OFFLINE_MODE:
         try:
             status = get_status()
             if status.lower() == 'on':
-                update_text(1)
+                update_text(True)
             elif status.lower() == 'off':
-                update_text(0)
+                update_text(False)
             else:
                 print(f'ERROR, unknown status {status}')
         except:
             print('ESP connection status: ', esp.is_connected)
             if not esp.is_connected:
                 connect_ap()
-
             print('Failed request, trying again...')
 
-    # debugging
-    else:
-        NIGHT_MODE = True
-        print(NIGHT_MODE)
-        update_text(1)
-        time.sleep(1.5)
-
-        NIGHT_MODE = False
-        print(NIGHT_MODE)
-        update_text(1)
-        time.sleep(1.5)
-
-        NIGHT_MODE = True        
-        print(NIGHT_MODE)
-        time.sleep(1.5)
-        update_text(0)
-
-        NIGHT_MODE = False
-        print(NIGHT_MODE)
-        time.sleep(1.5)
-        update_text(0)
-
     check_time_count -= 1
-    # debugging
-    print('time check', check_time_count)
     time.sleep(TIME_SLEEP)
 
 ############################################################################################################################################################################
